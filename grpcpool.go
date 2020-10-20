@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ids       uint64
+	ids uint64
 	// ClosedErr grpc 连接已关闭
 	ClosedErr = stderr.New("grpc pool has closed")
 )
@@ -95,7 +95,7 @@ func New(builder Builder) *Pool {
 // Put 释放一个grpc连接
 func (p *Pool) Put(s SubClient) {
 	sub := s.(*subClient)
-	defer func (sub *subClient){
+	defer func(sub *subClient) {
 		sub.client = nil
 		sub.conn = nil
 		subPool.Put(sub)

@@ -14,7 +14,6 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
-
 func main() {
 	go startServer()
 
@@ -24,13 +23,13 @@ func main() {
 	// }
 
 	pool := grpcpool.New(builder)
-	go func(pool *grpcpool.Pool){
+	go func(pool *grpcpool.Pool) {
 		for {
 			pool.Debug()
 			time.Sleep(time.Second)
 		}
 	}(pool)
-		
+
 	//for{
 	wg := new(sync.WaitGroup)
 	limiter := rate.NewLimiter(rate.Limit(100000), 1)
@@ -47,8 +46,8 @@ func main() {
 func do(pool *grpcpool.Pool, limiter *rate.Limiter, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for k :=0; k < 1000; k++ {
-		if !limiter.Allow(){
+	for k := 0; k < 1000; k++ {
+		if !limiter.Allow() {
 			time.Sleep(limiter.Reserve().Delay())
 		}
 
