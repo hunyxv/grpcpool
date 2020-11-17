@@ -1,4 +1,4 @@
-module grpcpool
+module github.com/hunyxv/grpcpool
 
 go 1.15
 
