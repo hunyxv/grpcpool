@@ -167,6 +167,7 @@ func (p *Pool) Close() error {
 			return err
 		}
 	}
+	p.queue = p.queue[:0]
 
 	var err error
 	p.fullloadCli.Range(func(_, v interface{}) bool {
@@ -174,6 +175,7 @@ func (p *Pool) Close() error {
 		err = client.conn.Close()
 		return err == nil
 	})
+	p.fullloadCli = new(sync.Map)
 
 	return err
 }

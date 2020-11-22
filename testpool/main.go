@@ -33,11 +33,12 @@ func main() {
 	//for{
 	wg := new(sync.WaitGroup)
 	limiter := rate.NewLimiter(rate.Limit(100000), 1)
-	for k := 0; k < 10000; k++ {
+	for k := 0; k < 500; k++ {
 		wg.Add(1)
 		go do(pool, limiter, wg)
 	}
 	wg.Wait()
+	pool.Close()
 	pool.Debug()
 	fmt.Println(time.Now().Sub(t))
 	//}
