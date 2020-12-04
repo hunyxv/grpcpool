@@ -22,7 +22,7 @@ func main() {
 	// 	return nil, nil
 	// }
 
-	pool := grpcpool.New(builder)
+	pool := grpcpool.NewPool(builder)
 	go func(pool *grpcpool.Pool) {
 		for {
 			pool.Debug()
