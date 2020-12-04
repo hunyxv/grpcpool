@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"grpcpool"
+	"github.com/hunyxv/grpcpool"
 	"log"
 	"pb"
 	"time"
@@ -28,17 +28,14 @@ func builder() (*grpc.ClientConn, error) {
 	)
 }
 
-func get(sub grpcpool.SubClient) {
-	conn, err := sub.Conn()
-	if err != nil {
-		log.Println(err)
-	}
+func get(sub grpcpool.LogicConn) {
+	conn := sub.Conn()
 
 	svrClient := pb.NewHelloServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err = svrClient.SayHello(ctx, &pb.HelloRequest{Name: "Lixu"})
+	_, err := svrClient.SayHello(ctx, &pb.HelloRequest{Name: "Lixu"})
 	if err == grpc.ErrClientConnClosing {
 		log.Fatal("call server's SayHello err", err)
 	}
