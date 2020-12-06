@@ -2,6 +2,7 @@ package grpcpool
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"runtime"
@@ -62,7 +63,9 @@ func NewPool(builder Builder, opts ...Option) (pool *Pool, err error) {
 	}
 
 	if opt.Debug {
-		prometheus.MustRegister(statistics)
+		prometheus.MustRegister(statistics_get)
+		prometheus.MustRegister(statistics_put)
+		prometheus.MustRegister(connection)
 	}
 
 	pool = &Pool{
@@ -110,7 +113,7 @@ func (p *Pool) Get() (logicconn LogicConn, err error) {
 			return p.Get()
 		}
 		if p.opt.Debug {
-			statistics.WithLabelValues("get").Add(1)
+			statistics_get.WithLabelValues("get").Add(1)
 			connection.WithLabelValues("conn").Add(1)
 		}
 		return logicconn, nil
@@ -138,7 +141,7 @@ func (p *Pool) Get() (logicconn LogicConn, err error) {
 	}
 	p.mux.RUnlock()
 	if p.opt.Debug {
-		statistics.WithLabelValues("get").Add(1)
+		statistics_get.WithLabelValues("get").Add(1)
 		connection.WithLabelValues("conn").Add(1)
 	}
 	return
@@ -154,7 +157,7 @@ func (p *Pool) Put(lc LogicConn) {
 	grpcconn := logicconn.gconn
 	grpcconn.recycle(logicconn)
 	if p.opt.Debug {
-		statistics.WithLabelValues("put").Add(1)
+		statistics_put.WithLabelValues("put").Add(1)
 		connection.WithLabelValues("conn").Sub(1)
 	}
 }

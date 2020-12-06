@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -35,12 +34,12 @@ func sayHello(conn grpcpool.LogicConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	resp, err := svrClient.SayHello(ctx, &pb.HelloRequest{Name: "Lixu"})
+	_, err := svrClient.SayHello(ctx, &pb.HelloRequest{Name: "Lixu"})
 	if err == grpc.ErrClientConnClosing {
 		log.Fatal("call server's SayHello err", err)
 	}
 	if err != nil {
 		log.Fatal("call server's unary err", err)
 	}
-	fmt.Println(resp.Msg)
+	//fmt.Println(resp.Msg)
 }

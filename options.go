@@ -128,12 +128,20 @@ func WithDebug() Option {
 }
 
 var (
-	statistics = prometheus.NewCounterVec(
+	statistics_get = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "statistics",
+			Name: "statistics_get",
 			Help: "Number of 'get' and 'put'",
 		},
-		[]string{"get", "put"},
+		[]string{"get"},
+	)
+
+	statistics_put = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "statistics_put",
+			Help: "Number of 'get' and 'put'",
+		},
+		[]string{"put"},
 	)
 
 	connection = prometheus.NewGaugeVec(

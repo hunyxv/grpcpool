@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	//"math/rand"
+	"math/rand"
 	"net"
 	"time"
 	
@@ -17,8 +17,8 @@ import (
 type HelloService struct{}
 
 func (h *HelloService) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
-	// rander := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// time.Sleep(time.Duration(time.Millisecond) * time.Duration(rander.Intn(200)+1))
+	rander := rand.New(rand.NewSource(time.Now().UnixNano()))
+	time.Sleep(time.Duration(time.Millisecond) * time.Duration(rander.Intn(100)+1))
 
 	return &pb.HelloReply{Msg: fmt.Sprintf("Hello, %s!\n", req.Name)}, nil
 }

@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
-	"runtime"
 	"time"
 
 	"github.com/hunyxv/grpcpool"
@@ -26,14 +25,15 @@ func main2() {
 }
 
 func main() {
+
 	go startServer()
 
-	pool, err := grpcpool.NewPool(builder, grpcpool.WithMaxIdle(1))
+	pool, err := grpcpool.NewPool(builder, grpcpool.WithMaxIdle(1), grpcpool.WithDebug())
 	if err != nil {
 		panic(err)
 	}
 
-	limiter := rate.NewLimiter(rate.Limit(100000), runtime.NumCPU())
+	limiter := rate.NewLimiter(rate.Limit(100000), 10000)
 
 	go func() {
 		for {
@@ -63,7 +63,8 @@ func do(pool *grpcpool.Pool, limiter *rate.Limiter) {
 
 		sub, err := pool.Get()
 		if err != nil {
-			panic(err)
+			log.Fatalf("err: %s", err.Error())
+			//panic(err)
 		}
 
 		// time.Sleep(time.Millisecond * 10)//time.Duration(rand.Intn(15)))
