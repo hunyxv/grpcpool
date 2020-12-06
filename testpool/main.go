@@ -1,11 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"github.com/hunyxv/grpcpool"
+	"log"
+	"math"
 	"math/rand"
-	"sync"
+	"net/http"
+	"runtime"
 	"time"
+
+	"github.com/hunyxv/grpcpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"golang.org/x/time/rate"
 )
@@ -14,40 +18,45 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
+func main2() {
+	go startServer()
+
+	time.Sleep(time.Second)
+
+}
+
 func main() {
 	go startServer()
 
-	t := time.Now()
-	// builder := func() (*grpc.ClientConn, error) {
-	// 	return nil, nil
-	// }
-
-	pool,_ := grpcpool.NewPool(builder)
-	// go func(pool *grpcpool.Pool) {
-	// 	for {
-	// 		pool.Debug()
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }(pool)
-
-	//for{
-	wg := new(sync.WaitGroup)
-	limiter := rate.NewLimiter(rate.Limit(100000), 1)
-	for k := 0; k < 1000; k++ {
-		wg.Add(1)
-		go do(pool, limiter, wg)
+	pool, err := grpcpool.NewPool(builder, grpcpool.WithMaxIdle(1))
+	if err != nil {
+		panic(err)
 	}
-	wg.Wait()
-	pool.Close()
-	//pool.Debug()
-	fmt.Println(time.Now().Sub(t))
-	//}
+
+	limiter := rate.NewLimiter(rate.Limit(100000), runtime.NumCPU())
+
+	go func() {
+		for {
+			for radian := float64(0); radian < 3.2; radian += 0.1 {
+				limiter.SetLimit(rate.Limit(math.Sin(radian) * 100000))
+				time.Sleep(time.Second * 3)
+			}
+		}
+	}()
+
+	for k := 0; k < 100; k++ {
+		go do(pool, limiter)
+	}
+
+	http.Handle("/metrics", promhttp.Handler())
+	log.Println("start...")
+	if err := http.ListenAndServe(":8090", nil); err != nil {
+		log.Panic(err)
+	}
 }
 
-func do(pool *grpcpool.Pool, limiter *rate.Limiter, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for k := 0; k < 1000; k++ {
+func do(pool *grpcpool.Pool, limiter *rate.Limiter) {
+	for {
 		if !limiter.Allow() {
 			time.Sleep(limiter.Reserve().Delay())
 		}
@@ -58,7 +67,7 @@ func do(pool *grpcpool.Pool, limiter *rate.Limiter, wg *sync.WaitGroup) {
 		}
 
 		// time.Sleep(time.Millisecond * 10)//time.Duration(rand.Intn(15)))
-		get(sub)
+		sayHello(sub)
 		pool.Put(sub)
 	}
 }

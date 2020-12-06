@@ -5,6 +5,8 @@ import (
 	"math"
 	"os"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -47,6 +49,9 @@ type option struct {
 	// Logger is the customized logger for logging info, if it is not set,
 	// default standard logger from log package is used.
 	Logger Logger
+
+	// Debug
+	Debug bool
 }
 
 var defaultOption = option{
@@ -114,3 +119,28 @@ func WithLogger(logger Logger) Option {
 		opt.Logger = logger
 	}
 }
+
+// WithDebug .
+func WithDebug() Option {
+	return func(opt *option) {
+		opt.Debug = true
+	}
+}
+
+var (
+	statistics = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "statistics",
+			Help: "Number of 'get' and 'put'",
+		},
+		[]string{"get", "put"},
+	)
+
+	connection = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "connection",
+			Help: "Number of connection",
+		},
+		[]string{"conn"},
+	)
+)

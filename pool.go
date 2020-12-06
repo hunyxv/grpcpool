@@ -4,11 +4,13 @@ import (
 	"errors"
 	"math"
 	"math/rand"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hunyxv/grpcpool/internal"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"google.golang.org/grpc"
 )
@@ -59,6 +61,10 @@ func NewPool(builder Builder, opts ...Option) (pool *Pool, err error) {
 		f(opt)
 	}
 
+	if opt.Debug {
+		prometheus.MustRegister(statistics)
+	}
+
 	pool = &Pool{
 		mux:     new(sync.RWMutex),
 		builder: builder,
@@ -93,29 +99,32 @@ func (p *Pool) Get() (logicconn LogicConn, err error) {
 
 	l := len(p.conns)
 	if l <= p.opt.MaxIdle {
-		logicconn, err = p.conns[p.r.Intn(l)].get()
+		logicconn, err = p.conns[time.Now().UnixNano()%int64(l)].get()
 		p.mux.RUnlock()
 		if err == errGrpcOverload {
 			err = p.createNewGrpcConn(l)
 			if err != nil {
 				return
 			}
+			runtime.Gosched()
 			return p.Get()
 		}
-
+		if p.opt.Debug {
+			statistics.WithLabelValues("get").Add(1)
+			connection.WithLabelValues("conn").Add(1)
+		}
 		return logicconn, nil
 	}
 
 	l = int(math.Round(float64(l) * 0.8))
-	logicconn, err = p.conns[p.r.Intn(l)].get()
+	index := time.Now().UnixNano() % int64(l)
+	logicconn, err = p.conns[index].get()
 	if err == ErrConnClosed || err == errGrpcOverload {
-		for i := l; i < l; i++ {
+		for i := int(index) + 1; i < len(p.conns); i++ {
 			logicconn, err = p.conns[i].get()
 			if err != nil {
 				continue
 			}
-			p.mux.RUnlock()
-			return logicconn, nil
 		}
 		if logicconn == nil {
 			p.mux.RUnlock()
@@ -123,10 +132,15 @@ func (p *Pool) Get() (logicconn LogicConn, err error) {
 			if err != nil {
 				return
 			}
+			//runtime.Gosched()
 			return p.Get()
 		}
 	}
 	p.mux.RUnlock()
+	if p.opt.Debug {
+		statistics.WithLabelValues("get").Add(1)
+		connection.WithLabelValues("conn").Add(1)
+	}
 	return
 }
 
@@ -139,6 +153,10 @@ func (p *Pool) Put(lc LogicConn) {
 	logicconn := lc.(logicConn)
 	grpcconn := logicconn.gconn
 	grpcconn.recycle(logicconn)
+	if p.opt.Debug {
+		statistics.WithLabelValues("put").Add(1)
+		connection.WithLabelValues("conn").Sub(1)
+	}
 }
 
 func (p *Pool) cleanPeriodically() {
@@ -225,7 +243,7 @@ func (p *Pool) createNewGrpcConn(l int) (err error) {
 	p.mux.Lock()
 	defer p.mux.Unlock()
 
-	if l != len(p.conns) {
+	if l != len(p.conns) || len(p.conns) > p.opt.GrpcPoolSize {
 		return
 	}
 
