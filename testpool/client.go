@@ -22,7 +22,7 @@ func builder() (*grpc.ClientConn, error) {
 	}
 
 	return grpc.Dial(addr,
-		grpc.WithTimeout(time.Second*2),
+		grpc.WithTimeout(time.Second*10),
 		grpc.WithBlock(),
 		grpc.WithInsecure(),
 		grpc.WithKeepaliveParams(kacp),

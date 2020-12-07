@@ -2,7 +2,6 @@ package grpcpool
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"runtime"
@@ -63,8 +62,8 @@ func NewPool(builder Builder, opts ...Option) (pool *Pool, err error) {
 	}
 
 	if opt.Debug {
-		prometheus.MustRegister(statistics_get)
-		prometheus.MustRegister(statistics_put)
+		prometheus.MustRegister(statistics)
+		//prometheus.MustRegister(statistics_put)
 		prometheus.MustRegister(connection)
 	}
 
@@ -86,6 +85,9 @@ func NewPool(builder Builder, opts ...Option) (pool *Pool, err error) {
 
 		gconn := newGrpcConn(pool, conn)
 		pool.conns = append(pool.conns, gconn)
+		if opt.Debug {
+			connection.WithLabelValues("conn").Add(1)
+		}
 	}
 
 	go pool.cleanPeriodically()
@@ -113,8 +115,7 @@ func (p *Pool) Get() (logicconn LogicConn, err error) {
 			return p.Get()
 		}
 		if p.opt.Debug {
-			statistics_get.WithLabelValues("get").Add(1)
-			connection.WithLabelValues("conn").Add(1)
+			statistics.WithLabelValues("get").Add(1)
 		}
 		return logicconn, nil
 	}
@@ -130,19 +131,19 @@ func (p *Pool) Get() (logicconn LogicConn, err error) {
 			}
 		}
 		if logicconn == nil {
+			ll := len(p.conns)
 			p.mux.RUnlock()
-			err = p.createNewGrpcConn(len(p.conns))
+			err = p.createNewGrpcConn(ll)
 			if err != nil {
 				return
 			}
-			//runtime.Gosched()
+			runtime.Gosched()
 			return p.Get()
 		}
 	}
 	p.mux.RUnlock()
 	if p.opt.Debug {
-		statistics_get.WithLabelValues("get").Add(1)
-		connection.WithLabelValues("conn").Add(1)
+		statistics.WithLabelValues("get").Add(1)
 	}
 	return
 }
@@ -157,8 +158,7 @@ func (p *Pool) Put(lc LogicConn) {
 	grpcconn := logicconn.gconn
 	grpcconn.recycle(logicconn)
 	if p.opt.Debug {
-		statistics_put.WithLabelValues("put").Add(1)
-		connection.WithLabelValues("conn").Sub(1)
+		statistics.WithLabelValues("put").Add(1)
 	}
 }
 
@@ -206,12 +206,15 @@ func (p *Pool) cleanPeriodically() {
 						p.conns[l-1] = nil
 						p.conns = p.conns[:l-1]
 						l--
+						if p.opt.Debug {
+							connection.WithLabelValues("conn").Sub(1)
+						}
 						continue
 					}
 				}
 				i++
 			}
-
+			p.opt.Logger.Printf("conn: %d", len(p.conns))
 			p.mux.Unlock()
 		case <-p.ch:
 			break
@@ -254,7 +257,9 @@ func (p *Pool) createNewGrpcConn(l int) (err error) {
 	if err != nil {
 		return
 	}
-
+	if p.opt.Debug {
+		connection.WithLabelValues("conn").Add(1)
+	}
 	p.conns = append(p.conns, newGrpcConn(p, clientConn))
 	return
 }

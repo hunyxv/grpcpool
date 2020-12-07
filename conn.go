@@ -1,6 +1,7 @@
 package grpcpool
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )
+
+var id int32
 
 // LogicConn grpc 逻辑连接接口
 type LogicConn interface {
@@ -39,6 +42,7 @@ type grpcConn struct {
 	p    *Pool
 	conn *grpc.ClientConn
 
+	id                int32
 	maxStreamsClient  int
 	clientIdleTimeout time.Duration
 	current           int32 // 当前剩余可用
@@ -48,6 +52,7 @@ type grpcConn struct {
 
 func newGrpcConn(p *Pool, conn *grpc.ClientConn) *grpcConn {
 	return &grpcConn{
+		id:                atomic.AddInt32(&id, 1),
 		p:                 p,
 		conn:              conn,
 		maxStreamsClient:  p.opt.MaxStreamsClient,
@@ -79,11 +84,14 @@ func (gc *grpcConn) get() (lc LogicConn, err error) {
 	}
 
 	gc.ts = time.Now()
-	gc.current--
+	atomic.AddInt32(&gc.current, -1)
 
 	logicconn := logicConnPool.Get().(logicConn)
 	logicconn.gconn = gc
 	logicconn.ClientConnInterface = gc.conn
+	if gc.p.opt.Debug {
+		connection.WithLabelValues(fmt.Sprintf("conn-%d", gc.id)).Add(1)
+	}
 	return logicconn, nil
 }
 
@@ -92,7 +100,9 @@ func (gc *grpcConn) recycle(lc logicConn) {
 	if int(current) > gc.maxStreamsClient {
 		panic("Unknown error")
 	}
-
+	if gc.p.opt.Debug {
+		connection.WithLabelValues(fmt.Sprintf("conn-%d", gc.id)).Sub(1)
+	}
 	lc.gconn = nil
 	lc.ClientConnInterface = nil
 	logicConnPool.Put(lc)

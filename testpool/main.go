@@ -28,12 +28,12 @@ func main() {
 
 	go startServer()
 
-	pool, err := grpcpool.NewPool(builder, grpcpool.WithMaxIdle(1), grpcpool.WithDebug())
+	pool, err := grpcpool.NewPool(builder, grpcpool.WithMaxIdle(3), grpcpool.WithDebug())
 	if err != nil {
 		panic(err)
 	}
 
-	limiter := rate.NewLimiter(rate.Limit(100000), 10000)
+	limiter := rate.NewLimiter(rate.Limit(100000), 100000)
 
 	go func() {
 		for {
@@ -50,7 +50,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	log.Println("start...")
-	if err := http.ListenAndServe(":8090", nil); err != nil {
+	if err := http.ListenAndServe("0.0.0.0:8090", nil); err != nil {
 		log.Panic(err)
 	}
 }
@@ -64,7 +64,6 @@ func do(pool *grpcpool.Pool, limiter *rate.Limiter) {
 		sub, err := pool.Get()
 		if err != nil {
 			log.Fatalf("err: %s", err.Error())
-			//panic(err)
 		}
 
 		// time.Sleep(time.Millisecond * 10)//time.Duration(rand.Intn(15)))
