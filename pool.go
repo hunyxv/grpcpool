@@ -3,7 +3,6 @@ package grpcpool
 import (
 	"errors"
 	"math"
-	"math/rand"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/hunyxv/grpcpool/internal"
 	"github.com/prometheus/client_golang/prometheus"
-
 	"google.golang.org/grpc"
 )
 
@@ -49,7 +47,6 @@ type Pool struct {
 	conns   []*grpcConn
 	builder Builder
 
-	r  *rand.Rand
 	ch chan struct{}
 	noCopy
 }
@@ -73,7 +70,6 @@ func NewPool(builder Builder, opts ...Option) (pool *Pool, err error) {
 		cond:    sync.NewCond(internal.NewSpinLock()),
 		conns:   make([]*grpcConn, 0, opt.MaxIdle),
 		opt:     opt,
-		r:       rand.New(rand.NewSource(time.Now().UnixNano())),
 		ch:      make(chan struct{}, 0),
 	}
 
