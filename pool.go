@@ -217,7 +217,7 @@ func (p *Pool) cleanPeriodically() {
 			p.opt.Logger.Printf("conn: %d", len(p.conns))
 			p.mux.Unlock()
 		case <-p.ch:
-			break
+			return
 		}
 	}
 }
